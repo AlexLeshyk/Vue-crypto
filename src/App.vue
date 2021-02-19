@@ -182,7 +182,7 @@ export default {
               if (this.selected?.name === currentTicker.name ) {
                 this.graph.push(data.USD);
               }
-        }, 5000);
+        }, 3000);
         this.ticker = '';
       }
     },
