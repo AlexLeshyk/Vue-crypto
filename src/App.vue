@@ -48,7 +48,7 @@
             <div
               v-for="t in tickers"
               v-bind:key="t.name"
-              v-on:click="selected = t"
+              v-on:click="select(t)"
               v-bind:class="{
                 'border-4': selected === t
               }"
@@ -90,16 +90,12 @@
         </h3>
         <div class="flex items-end border-gray-600 border-b border-l h-64">
           <div
-            class="bg-purple-800 border w-10 h-24"
-          ></div>
-          <div
-            class="bg-purple-800 border w-10 h-32"
-          ></div>
-          <div
-            class="bg-purple-800 border w-10 h-48"
-          ></div>
-          <div
-            class="bg-purple-800 border w-10 h-16"
+            v-for="(item, idx) in renderGraph()"
+            v-bind:key="idx"
+            v-bind:style="{
+              height: `${item}%`
+            }"
+            class="bg-purple-800 border w-10"
           ></div>
         </div>
         <button
@@ -157,6 +153,7 @@ export default {
         { name: "Demo3", price: "3"}
       ],
       selected: null,
+      graph: [],
       items: [
         { name: "Alph", price: 1 },
         { name: "Beta", price: 2 },
@@ -167,17 +164,24 @@ export default {
   methods: {
     add() {
       if (this.ticker !== '') {
-        const newTicker = {
+        const currentTicker = {
           name: this.ticker,
           price: "-"
         }
-        this.tickers.push(newTicker);
+        this.tickers.push(currentTicker);
         setInterval(async () => {
           const f = await fetch(`
-            https://min-api.cryptocompare.com/data/price?fsym=${newTicker.name}&tsyms=USD&api_key=054261d071944c7c34d741877bfdfaf59b517eb8aca475c8d1f2fd1fcdc89431`);
-            console.log(f);
-            // const data = await f.json();
-            // console.log(data);
+            https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&api_key=054261d071944c7c34d741877bfdfaf59b517eb8aca475c8d1f2fd1fcdc89431`);
+            const data = await f.json();
+
+            this.tickers.find(function(t) {
+              return t.name === currentTicker.name;
+            }).price =
+              data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
+
+              if (this.selected?.name === currentTicker.name ) {
+                this.graph.push(data.USD);
+              }
         }, 5000);
         this.ticker = '';
       }
@@ -193,6 +197,19 @@ export default {
       setTimeout(() => {
         lastItem.price = "over 9000";
       }, 3000);
+    },
+
+    renderGraph() {
+      const maxValue = Math.max(...this.graph);
+      const minValue = Math.min(...this.graph);
+      return this.graph.map( function(price) {
+        return 5 + (price - minValue)*95 / (maxValue - minValue);
+      });
+    },
+
+    select(ticker) {
+      this.selected = ticker;
+      this.graph = [];
     },
 
     handleDelete(tickerToRemove) {
