@@ -44,9 +44,21 @@
       </section>
         <template v-if="tickers.length">
           <hr class="w-full border-t border-gray-600 my-4" />
+          <div>
+            <button class="my-4 mx-3 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500" type="button"
+            v-if="page > 1"
+            v-on:click="page = page - 1">Назад</button>
+            <button type="button" class="my-4 mx-3 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            v-on:click="page = page + 1"
+            v-if="hasNextPage">Вперед</button>
+            <div class="">
+              Фильтр: <input v-model="filter" type="text"/>
+            </div>
+          </div>
+          <hr class="w-full border-t border-gray-600 my-4" />
           <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
             <div
-              v-for="t in tickers"
+              v-for="t in paginatedTickers"
               v-bind:key="t.name"
               v-on:click="select(t)"
               v-bind:class="{
@@ -90,7 +102,7 @@
         </h3>
         <div class="flex items-end border-gray-600 border-b border-l h-64">
           <div
-            v-for="(item, idx) in renderGraph()"
+            v-for="(item, idx) in renderedGraph"
             v-bind:key="idx"
             v-bind:style="{
               height: `${item}%`
@@ -147,13 +159,11 @@ export default {
   data() {
     return {
       ticker: '',
-      tickers: [
-        { name: "Demo1", price: "1"},
-        { name: "Demo2", price: "2"},
-        { name: "Demo3", price: "3"}
-      ],
+      tickers: [],
       selected: null,
       graph: [],
+      page: 1,
+      filter: '',
       items: [
         { name: "Alph", price: 1 },
         { name: "Beta", price: 2 },
@@ -161,6 +171,15 @@ export default {
     };
   },
   created() {
+    const windowData = Object.fromEntries(new URL(window.location).searchParams.entries());
+
+    if (windowData.filter) {
+      this.filter = windowData.filter;
+    }
+    if (windowData.page) {
+      this.page = windowData.page;
+    }
+
     const tickersData = localStorage.getItem('cripto-list');
     if (tickersData) {
       this.tickers = JSON.parse(tickersData);
@@ -168,6 +187,41 @@ export default {
         this.subscribeToUpdates(ticker.name);
       });
     }
+  },
+  computed: {
+    startIndex() {
+      return (this.page - 1)*6;
+    },
+
+    endIndex() {
+      return this.page*6;
+    },
+
+    hasNextPage() {
+      return this.filteredTickers.length > this.endIndex;
+    },
+
+    filteredTickers() {
+      return this.tickers.filter(item =>
+        item.name.includes(this.filter)
+      );
+    },
+
+    paginatedTickers() {
+      return this.filteredTickers.slice(this.startIndex, this.endIndex);
+    },
+
+    renderedGraph() {
+      const maxValue = Math.max(...this.graph);
+      const minValue = Math.min(...this.graph);
+
+      if (maxValue === minValue) {
+        return this.graph.map(() => 50);
+      }
+      return this.graph.map( function(price) {
+        return 5 + (price - minValue)*95 / (maxValue - minValue);
+      });
+    },
   },
   methods: {
     subscribeToUpdates(tickerName) {
@@ -194,6 +248,7 @@ export default {
           price: "-"
         }
         this.tickers.push(currentTicker);
+        this.filter = '';
 
         localStorage.setItem('cripto-list', JSON.stringify(this.tickers));
         this.subscribeToUpdates(currentTicker);
@@ -212,14 +267,6 @@ export default {
       }, 3000);
     },
 
-    renderGraph() {
-      const maxValue = Math.max(...this.graph);
-      const minValue = Math.min(...this.graph);
-      return this.graph.map( function(price) {
-        return 5 + (price - minValue)*95 / (maxValue - minValue);
-      });
-    },
-
     select(ticker) {
       this.selected = ticker;
       this.graph = [];
@@ -228,6 +275,23 @@ export default {
     handleDelete(tickerToRemove) {
       this.tickers = this.tickers.filter(t => t !== tickerToRemove);
     }
+  },
+  watch: {
+    filter() {
+      this.page = 1;
+      window.history.pushState(
+        null,
+        document.title,
+        `${window.location.pathname}?filter=${this.filter}&page=${this.page}`
+      );
+    },
+    page() {
+      window.history.pushState(
+        null,
+        document.title,
+        `${window.location.pathname}?filter=${this.filter}&page=${this.page}`
+      );
+    }
   }
-}
+};
 </script>
