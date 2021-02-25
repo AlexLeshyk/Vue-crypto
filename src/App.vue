@@ -195,7 +195,7 @@ export default {
         }
         this.tickers.push(currentTicker);
 
-        localStorage.setItem('cripto-list', JSON.strringfy(this.tickers));
+        localStorage.setItem('cripto-list', JSON.stringify(this.tickers));
         this.subscribeToUpdates(currentTicker);
       }
     },
