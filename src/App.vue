@@ -12,6 +12,7 @@
               <input
                 v-model="ticker"
                 v-on:keypress.enter="add"
+                v-on:input="inputCoins"
                 type="text"
                 name="wallet"
                 id="wallet"
@@ -19,6 +20,21 @@
                 placeholder="Например DOGE"
               />
             </div>
+            <div class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap">
+              <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
+                BTC
+              </span>
+              <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
+                DOGE
+              </span>
+              <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
+                BCH
+              </span>
+              <span class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
+                CHD
+              </span>
+            </div>
+            <div v-if="addedTicker" class="text-sm text-red-600">Такой тикер уже добавлен</div>
           </div>
         </div>
         <button
@@ -161,6 +177,7 @@ export default {
       ticker: '',
       tickers: [],
       selectedTicker: null,
+      addedTicker: false,
       graph: [],
       page: 1,
       filter: '',
@@ -231,6 +248,13 @@ export default {
     }
   },
   methods: {
+    async inputCoins() {
+      this.addedTicker = false;
+      const res = await fetch(`
+      https://min-api.cryptocompare.com/data/all/coinlist?summary=true`);
+      const data = await res.json();
+      console.log(data.Data);
+    },
     subscribeToUpdates(tickerName) {
       setInterval(async () => {
         const f = await fetch(`
@@ -251,13 +275,23 @@ export default {
     add() {
       if (this.ticker !== '') {
         const currentTicker = {
-          name: this.ticker,
+          name: this.ticker.toUpperCase(),
           price: "-"
         }
-        this.tickers = [...this.tickers, currentTicker];
-        this.filter = '';
+        this.tickers.forEach((ticker) => {
+          if ( currentTicker.name === ticker.name ) {
+            this.addedTicker = !this.addedTicker;
+          }
+        });
 
-        this.subscribeToUpdates(currentTicker);
+        if (!this.addedTicker) {
+          this.tickers = [...this.tickers, currentTicker];
+          this.filter = '';
+
+          this.subscribeToUpdates(currentTicker);
+        } else {
+          this.ticker = '';
+        }
       }
     },
 
