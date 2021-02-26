@@ -62,7 +62,7 @@
               v-bind:key="t.name"
               v-on:click="select(t)"
               v-bind:class="{
-                'border-4': selected === t
+                'border-4': selectedTicker === t
               }"
               class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
             >
@@ -96,9 +96,9 @@
           </dl>
           <hr class="w-full border-t border-gray-600 my-4" />
         </template>
-      <section v-if="selected" class="relative">
+      <section v-if="selectedTicker" class="relative">
         <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
-          {{selected.name}} - USD
+          {{selectedTicker.name}} - USD
         </h3>
         <div class="flex items-end border-gray-600 border-b border-l h-64">
           <div
@@ -111,7 +111,7 @@
           ></div>
         </div>
         <button
-          v-on:click="selected = null"
+          v-on:click="selectedTicker = null"
           type="button"
           class="absolute top-0 right-0"
         >
@@ -160,7 +160,7 @@ export default {
     return {
       ticker: '',
       tickers: [],
-      selected: null,
+      selectedTicker: null,
       graph: [],
       page: 1,
       filter: '',
@@ -222,6 +222,13 @@ export default {
         return 5 + (price - minValue)*95 / (maxValue - minValue);
       });
     },
+
+    pageStateOptions() {
+      return {
+        filter: this.filter,
+        page: this.page
+      }
+    }
   },
   methods: {
     subscribeToUpdates(tickerName) {
@@ -235,7 +242,7 @@ export default {
           }).price =
             data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
 
-            if (this.selected?.name === tickerName ) {
+            if (this.selectedTicker?.name === tickerName ) {
               this.graph.push(data.USD);
             }
       }, 5000);
@@ -247,10 +254,9 @@ export default {
           name: this.ticker,
           price: "-"
         }
-        this.tickers.push(currentTicker);
+        this.tickers = [...this.tickers, currentTicker];
         this.filter = '';
 
-        localStorage.setItem('cripto-list', JSON.stringify(this.tickers));
         this.subscribeToUpdates(currentTicker);
       }
     },
@@ -268,28 +274,36 @@ export default {
     },
 
     select(ticker) {
-      this.selected = ticker;
-      this.graph = [];
+      this.selectedTicker = ticker;
     },
 
     handleDelete(tickerToRemove) {
       this.tickers = this.tickers.filter(t => t !== tickerToRemove);
+      if ( this.selectedTicker === tickerToRemove) {
+        this.selectedTicker = null;
+      }
     }
   },
   watch: {
+    selectedTicker() {
+      this.graph = [];
+    },
+    tickers() {
+      localStorage.setItem('cripto-list', JSON.stringify(this.tickers));
+    },
+    paginatedTickers() {
+      if (this.paginatedTickers.length === 0 && this.page > 1) {
+        this.page -= 1;
+      }
+    },
     filter() {
       this.page = 1;
-      window.history.pushState(
-        null,
-        document.title,
-        `${window.location.pathname}?filter=${this.filter}&page=${this.page}`
-      );
     },
-    page() {
+    pageStateOptions(value) {
       window.history.pushState(
         null,
         document.title,
-        `${window.location.pathname}?filter=${this.filter}&page=${this.page}`
+        `${window.location.pathname}?filter=${value.filter}&page=${value.page}`
       );
     }
   }
